@@ -26,12 +26,20 @@ export type Rule = {
 	scroll?: boolean | string;
 	focus?: boolean | string;
 	if?: Predicate;
+	/** Watch for search parameter changes on the same URL */
+	watchSearchParams?: boolean | string[];
 };
 
 /** The plugin options */
 export type Options = {
 	rules: Rule[];
 	debug: boolean;
+};
+
+/** Options for ParsedRule constructor */
+export type ParsedRuleOptions = Rule & {
+	swup: Swup;
+	logger?: Logger;
 };
 
 /** A fragment visit object */

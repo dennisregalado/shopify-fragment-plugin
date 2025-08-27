@@ -1,28 +1,36 @@
-# Swup Fragment Plugin
+# Shopify Swup Fragment Plugin
 
 <!-- swup-docs-ignore-start -->
 
-[![npm version](https://img.shields.io/npm/v/@swup/fragment-plugin.svg)](https://www.npmjs.com/package/@swup/fragment-plugin)
-[![Unit Tests](https://img.shields.io/github/actions/workflow/status/swup/fragment-plugin/unit-tests.yml?branch=main&label=vitest)](https://github.com/swup/fragment-plugin/actions/workflows/unit-tests.yml)
-[![E2E Tests](https://img.shields.io/github/actions/workflow/status/swup/fragment-plugin/e2e-tests.yml?branch=main&label=playwright)](https://github.com/swup/fragment-plugin/actions/workflows/e2e-tests.yml)
+[![npm version](https://img.shields.io/npm/v/shopify-swup-fragment-plugin.svg)](https://www.npmjs.com/package/shopify-swup-fragment-plugin)
 [![License](https://img.shields.io/github/license/swup/fragment-plugin.svg)](https://github.com/swup/fragment-plugin/blob/main/LICENSE)
 
 <!-- swup-docs-ignore-end -->
 
-A [swup](https://swup.js.org) plugin for dynamically replacing containers based on rules 🧩
+A [swup](https://swup.js.org) plugin for dynamically replacing containers with **Shopify search parameter support** for variants and filtering 🛍️
 
-- Selectively replace containers instead of the main swup containers, based on custom rules
-- Improve orientation by animating only the parts of the page that have actually changed
-- Give your site the polish and snappiness of a single-page app
+- **Shopify Variant Support**: Perfect for product variant changes without full page reloads
+- **Collection Filtering**: Handles Shopify filter URLs seamlessly
+- **Search Parameter Monitoring**: Watch specific or all URL parameters for changes
+- **Backward Compatible**: All existing functionality preserved
+- **Selectively replace containers** instead of the main swup containers, based on custom rules
+- **Improve performance** by animating only the parts of the page that have actually changed
 
 ## Use cases
 
-All of the following scenarios require updating only a small content fragment instead of
-performing a full page transition:
+### 🎯 Shopify-Specific Scenarios
 
-- a filter UI that live-updates its list of results on every interaction
-- a detail overlay that shows on top of the currently open content
-- a tab group that should update only itself when selecting one of the tabs
+- **Product Variants**: Update product images, forms, and pricing when customers select different variants
+- **Collection Filtering**: Live-update product grids when customers apply filters (color, size, price, etc.)
+- **Search Results**: Handle search parameter changes for dynamic search experiences
+- **Dynamic Content**: Any scenario where URL parameters change content without changing the base page
+
+### 📱 General Web Scenarios
+
+- Filter UIs that live-update their list of results on every interaction
+- Detail overlays that show on top of the currently open content
+- Tab groups that should update only themselves when selecting one of the tabs
+- Form submissions that update only specific page sections
 
 If you are looking for selectively replacing forms on submission, you should have a look at
 [Forms Plugin](https://swup.js.org/plugins/forms-plugin/#inline-forms).
@@ -54,17 +62,17 @@ https://github.com/swup/fragment-plugin/assets/869813/ecaf15d7-ec72-43e8-898a-64
 Install the plugin from npm and import it into your bundle.
 
 ```bash
-npm install @swup/fragment-plugin
+npm install shopify-swup-fragment-plugin
 ```
 
 ```js
-import SwupFragmentPlugin from '@swup/fragment-plugin';
+import ShopifyFragmentPlugin from 'shopify-swup-fragment-plugin';
 ```
 
 Or include the minified production file from a CDN:
 
 ```html
-<script src="https://unpkg.com/@swup/fragment-plugin@1"></script>
+<script src="https://unpkg.com/shopify-swup-fragment-plugin@1"></script>
 ```
 
 ## How it works
@@ -78,49 +86,46 @@ When a visit is determined to be a fragment visit, the plugin will:
 - add a `to-[name]` class to the elements if the current `rule` has a `name` key
 - **ignore** elements that already match the current visit's URL
 
-## Example
+## Examples
 
-### Content filter: only update a list of results
+### 🛍️ Shopify Product Variants
 
-Imagine a website with a `/users/` page that displays a list of users. Above the user list, there
-is a filter UI to choose which users to display. Selecting a filter will trigger a visit
-to the narrowed-down user list at `/users/filter/x/`. The only part that has changed is the
-list of users, so that's what we'd like to replace and animate instead of the whole content
-container.
+Perfect for updating product images, forms, and pricing when customers select different variants:
 
 ```html
 <body>
-  <header>Website</header>
-  <main id="swup" class="transition-main" class="transition-main">
-    <h1>Users</h1>
-    <!-- A list of filters for the users: selecting one will update the list below -->
-    <ul>
-      <a href="/users/filter/1/">Filter 1</a>
-      <a href="/users/filter/2/">Filter 2</a>
-      <a href="/users/filter/3/">Filter 2</a>
-    </ul>
-    <!-- The list of users, filtered by the criteria above -->
-    <ul id="users">
-      <li><a href="/user/1/">User 1</a></li>
-      <li><a href="/user/2/">User 2</a></li>
-      <li><a href="/user/3/">User 3</a></li>
-    </ul>
+  <header>Shop</header>
+  <main id="swup" class="transition-main">
+    <div id="product-media">
+      <!-- Product images that change with variants -->
+      <img src="variant-image.jpg" alt="Product" />
+    </div>
+    <div id="product-form">
+      <!-- Variant selector and add to cart form -->
+      <select name="variant">
+        <option value="small">Small</option>
+        <option value="large">Large</option>
+      </select>
+      <span id="product-price">$29.99</span>
+    </div>
   </main>
 </body>
 ```
 
-Using Fragment Plugin, we can update **only** the `#users` list when clicking one of the filters.
-The plugin expects an array of rules to recognize and handle fragment visits:
-
 ```js
+import ShopifyFragmentPlugin from 'shopify-swup-fragment-plugin';
+
 const swup = new Swup({
   plugins: [
-    new SwupFragmentPlugin({
+    new ShopifyFragmentPlugin({
       rules: [
         {
-          from: '/users/:filter?',
-          to: '/users/:filter?',
-          containers: ['#users']
+          from: '/products/(.*)',
+          to: '/products/(.*)',
+          containers: ['#product-media', '#product-form'],
+          watchSearchParams: ['variant'], // Watch variant parameter changes
+          name: 'product-variant',
+          scroll: false // Don't scroll when variant changes
         }
       ]
     })
@@ -128,29 +133,67 @@ const swup = new Swup({
 });
 ```
 
-Now we can add custom animations for our fragment rule:
+### 🎛️ Shopify Collection Filtering
 
-```css
-/*
-* The default animation, for visits without matching fragment rules
-*/
-html.is-changing .transition-main {
-  transition: opacity 250ms;
-  opacity: 1;
-}
-html.is-animating .transition-main {
-  opacity: 0;
-}
+Handle live product grid updates when customers apply filters:
 
-/*
-* The animation when filtering users
-*/
-#users.is-changing {
-  transition: opacity 250ms;
-}
-#users.is-animating {
-  opacity: 0;
-}
+```html
+<body>
+  <header>Shop</header>
+  <main id="swup" class="transition-main">
+    <div id="filters">
+      <!-- Filter controls -->
+      <a href="?filter.v.option.color=red">Red</a>
+      <a href="?filter.v.option.color=blue">Blue</a>
+    </div>
+    <div id="product-grid">
+      <!-- Products that update when filtered -->
+      <div class="product">Product 1</div>
+      <div class="product">Product 2</div>
+    </div>
+  </main>
+</body>
+```
+
+```js
+const swup = new Swup({
+  plugins: [
+    new ShopifyFragmentPlugin({
+      rules: [
+        {
+          from: '/collections/(.*)',
+          to: '/collections/(.*)',
+          containers: ['#product-grid', '#filters'],
+          watchSearchParams: true, // Watch all Shopify filter parameters
+          name: 'collection-filter',
+          scroll: '#product-grid' // Scroll to product grid after filtering
+        }
+      ]
+    })
+  ]
+});
+```
+
+### 🔍 Search Results with Parameters
+
+Handle search parameter changes for dynamic search experiences:
+
+```js
+const swup = new Swup({
+  plugins: [
+    new ShopifyFragmentPlugin({
+      rules: [
+        {
+          from: '/search',
+          to: '/search',
+          containers: ['#search-results', '#search-filters'],
+          watchSearchParams: ['q', 'type', 'sort_by'], // Watch specific search params
+          name: 'search-results'
+        }
+      ]
+    })
+  ]
+});
 ```
 
 ## Options
@@ -168,6 +211,8 @@ export type Rule = {
   scroll?: boolean | string;
   focus?: boolean | string;
   if?: Predicate;
+  /** Watch for search parameter changes on the same URL */
+  watchSearchParams?: boolean | string[];
 };
 
 /** The plugin options */
@@ -235,6 +280,42 @@ Optional, Type: `boolean | string` – If you have [Accessibility Plugin](https:
 #### `rule.if`
 
 Optional, Type: `(visit) => boolean` – A predicate function that allows for fine-grained control over the matching behavior of a rule. The function receives the current [visit](https://swup.js.org/visit/) as a parameter. If the function returns `false`, the related rule is being skipped for the current visit, even if it matches the current route.
+
+#### `rule.watchSearchParams`
+
+Optional, Type: `boolean | string[]` – Enable monitoring of search parameter changes on the same URL. This is perfect for Shopify use cases like variant selection and filtering.
+
+- `true` – Watch **all** search parameters for changes
+- `string[]` – Watch only **specific** parameters (e.g., `['variant', 'filter.v.option.color']`)
+- `undefined` (default) – Don't watch search parameters (traditional behavior)
+
+**Examples:**
+
+```js
+// Watch all search parameters (Shopify filtering)
+{
+  from: '/collections/(.*)',
+  to: '/collections/(.*)',
+  containers: ['#product-grid'],
+  watchSearchParams: true // Watch all Shopify filter parameters
+}
+
+// Watch specific parameters (product variants)
+{
+  from: '/products/(.*)',
+  to: '/products/(.*)',
+  containers: ['#product-form'],
+  watchSearchParams: ['variant'] // Only watch variant parameter
+}
+
+// Watch multiple specific parameters
+{
+  from: '/search',
+  to: '/search',
+  containers: ['#search-results'],
+  watchSearchParams: ['q', 'type', 'sort_by'] // Watch search parameters
+}
+```
 
 ### `debug`
 
@@ -386,12 +467,76 @@ If all elements of a visit are `<template>` elements, the `out`/`in`-animation w
 > move them to the [top layer](https://developer.mozilla.org/en-US/docs/Glossary/Top_layer)
 > automatically. This has the benefit of simplified accesssiblity handling and styling.
 
-## API methods
+## Shopify Integration
 
-Fragment plugin provides a few API functions for advanced use cases. To be able to access those, you'll need to keep a reference to the plugin during instanciation:
+### Supported Shopify Parameters
+
+The plugin automatically handles all Shopify storefront filtering parameters:
+
+- **Variant Selection**: `variant` parameter for product variants
+- **Product Filters**: `filter.p.product_type`, `filter.p.vendor`, `filter.p.collection`
+- **Variant Filters**: `filter.v.option.color`, `filter.v.option.size`, `filter.v.availability`
+- **Price Filters**: `filter.v.price.gte`, `filter.v.price.lte`
+- **Metaobject Filters**: `filter.v.m.custom.*` for custom metafields
+
+### Complete Shopify Setup Example
 
 ```js
-const fragmentPlugin = new SwupFragmentPlugin({ rules });
+import ShopifyFragmentPlugin from 'shopify-swup-fragment-plugin';
+
+const swup = new Swup({
+  plugins: [
+    new ShopifyFragmentPlugin({
+      debug: true, // Enable debug for development
+      rules: [
+        // Product variants - update images, form, and pricing
+        {
+          from: '/products/(.*)',
+          to: '/products/(.*)',
+          containers: ['#product-media', '#product-form', '#product-price'],
+          watchSearchParams: ['variant'],
+          name: 'product-variant',
+          scroll: false // Don't scroll when variant changes
+        },
+
+        // Collection filtering - update product grid and active filters
+        {
+          from: '/collections/(.*)',
+          to: '/collections/(.*)',
+          containers: ['#product-grid', '#active-filters', '#sort-options'],
+          watchSearchParams: true, // Watch all Shopify filter parameters
+          name: 'collection-filter',
+          scroll: '#product-grid' // Scroll to products after filtering
+        },
+
+        // Search results with parameters
+        {
+          from: '/search',
+          to: '/search',
+          containers: ['#search-results', '#search-filters'],
+          watchSearchParams: ['q', 'type', 'sort_by'],
+          name: 'search-results'
+        }
+      ]
+    })
+  ]
+});
+```
+
+### Performance Benefits for Shopify
+
+- **Faster variant switching** without full page reloads
+- **Instant filter updates** for better user experience
+- **Reduced server load** by only updating changed content
+- **Smooth animations** between different states
+- **SEO-friendly** as it works with standard Shopify URLs
+
+## API methods
+
+Shopify Fragment Plugin provides a few API functions for advanced use cases. To be able to access those, you'll need to keep a reference to the plugin during instantiation:
+
+```js
+const fragmentPlugin = new ShopifyFragmentPlugin({ rules });
 const swup = new Swup({ plugins: [fragmentPlugin] });
 /** You can now call the plugin's public API, for example: */
 fragmentPlugin.getFragmentVisit(route);

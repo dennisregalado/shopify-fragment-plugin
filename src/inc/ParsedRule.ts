@@ -1,14 +1,12 @@
 import { matchPath, classify, Location } from 'swup';
 import type { Swup, Path, Visit } from 'swup';
-import type { Route, Rule, Predicate } from './defs.js';
+import type { Route, Rule, Predicate, ParsedRuleOptions } from './defs.js';
 import { dedupe, queryFragmentElement } from './functions.js';
 import Logger, { highlight } from './Logger.js';
 import { __DEV__ } from './env.js';
 
-type Options = Rule & {
-	swup: Swup;
-	logger?: Logger;
-};
+// Use ParsedRuleOptions from defs.js
+type Options = ParsedRuleOptions;
 
 /**
  * Represents a Rule

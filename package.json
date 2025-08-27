@@ -1,7 +1,7 @@
 {
-  "name": "@shopify-fragment-plugin",
+  "name": "shopify-swup-fragment-plugin",
   "amdName": "ShopifyFragmentPlugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A swup plugin for dynamically replacing containers with Shopify search parameter support for variants and filtering",
   "type": "module",
   "source": "src/index.ts",
@@ -17,7 +17,8 @@
     }
   },
   "author": {
-    "name": "Dennis Regalado"
+    "name": "Dennis Regalado",
+    "email": "dennis.regalado.dev@gmail.com"
   },
   "contributors": [
     {
