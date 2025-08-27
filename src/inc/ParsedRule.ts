@@ -26,6 +26,7 @@ export default class ParsedRule {
 	focus?: boolean | string;
 	logger?: Logger;
 	if: Predicate = () => true;
+	watchSearchParams?: boolean | string[];
 
 	constructor(options: Options) {
 		this.swup = options.swup;
@@ -37,6 +38,8 @@ export default class ParsedRule {
 		if (typeof options.scroll !== 'undefined') this.scroll = options.scroll;
 		if (typeof options.focus !== 'undefined') this.focus = options.focus;
 		if (typeof options.if === 'function') this.if = options.if;
+		if (typeof options.watchSearchParams !== 'undefined')
+			this.watchSearchParams = options.watchSearchParams;
 
 		this.containers = this.parseContainers(options.containers);
 
@@ -88,12 +91,68 @@ export default class ParsedRule {
 	 * Get debug info for logging
 	 */
 	getDebugInfo() {
-		const { from, to, containers } = this;
+		const { from, to, containers, watchSearchParams } = this;
 		return {
 			from: String(from),
 			to: String(to),
-			containers: String(containers)
+			containers: String(containers),
+			watchSearchParams: watchSearchParams ? String(watchSearchParams) : undefined
 		};
+	}
+
+	/**
+	 * Check if search parameters have changed between two URLs
+	 */
+	private hasSearchParamsChanged(fromUrl: string, toUrl: string): boolean {
+		if (!this.watchSearchParams) return false;
+
+		const fromLocation = Location.fromUrl(fromUrl);
+		const toLocation = Location.fromUrl(toUrl);
+
+		// If pathnames are different, this is not a search param only change
+		if (fromLocation.pathname !== toLocation.pathname) return false;
+
+		if (this.watchSearchParams === true) {
+			// Watch all search params - return true if any search params differ
+			return fromLocation.search !== toLocation.search;
+		}
+
+		if (Array.isArray(this.watchSearchParams)) {
+			// Watch specific search params - return true if any watched param differs
+			return this.watchSearchParams.some((param) => {
+				const fromValue = fromLocation.searchParams.get(param);
+				const toValue = toLocation.searchParams.get(param);
+				return fromValue !== toValue;
+			});
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if this is a search parameter change on the same base URL
+	 */
+	private isSearchParamOnlyChange(route: Route): boolean {
+		if (!this.watchSearchParams) return false;
+
+		const { url: fromUrl } = Location.fromUrl(route.from);
+		const { url: toUrl } = Location.fromUrl(route.to);
+
+		// For search param changes on the same URL, both URLs should match both patterns
+		// Since 'from' and 'to' patterns are often the same (e.g., '/products/(.*)')
+		const fromMatchesFromPattern = !!this.matchesFrom(fromUrl);
+		const fromMatchesToPattern = !!this.matchesTo(fromUrl);
+		const toMatchesFromPattern = !!this.matchesFrom(toUrl);
+		const toMatchesToPattern = !!this.matchesTo(toUrl);
+
+		// For search param changes, both URLs should match at least one of our patterns
+		const bothUrlsMatchPattern =
+			(fromMatchesFromPattern || fromMatchesToPattern) &&
+			(toMatchesFromPattern || toMatchesToPattern);
+
+		if (!bothUrlsMatchPattern) return false;
+
+		return this.hasSearchParamsChanged(route.from, route.to);
 	}
 
 	/**
@@ -110,9 +169,40 @@ export default class ParsedRule {
 		const { url: fromUrl } = Location.fromUrl(route.from);
 		const { url: toUrl } = Location.fromUrl(route.to);
 
-		const matchesRoute = !!this.matchesFrom(fromUrl) && !!this.matchesTo(toUrl);
-		if (!matchesRoute) return false;
+		// Check for search parameter changes on the same base URL first
+		const matchesSearchParamChange = this.isSearchParamOnlyChange(route);
 
+		// Check for traditional route matching (different URLs)
+		// But exclude cases where it's just a search param change without watchSearchParams enabled
+		const matchesRoute = !!this.matchesFrom(fromUrl) && !!this.matchesTo(toUrl);
+
+		// If URLs have same pathname but different search params, only allow search param matching
+		const fromLocation = Location.fromUrl(route.from);
+		const toLocation = Location.fromUrl(route.to);
+		const samePathname = fromLocation.pathname === toLocation.pathname;
+		const differentSearchParams = fromLocation.search !== toLocation.search;
+
+		if (samePathname && differentSearchParams) {
+			// This is a search param change - only match if watchSearchParams allows it
+			if (!matchesSearchParamChange) {
+				return false;
+			}
+
+			// Log debug info for search param changes
+			if (__DEV__) {
+				this.logger?.log(
+					`fragment rule matched due to search parameter change:`,
+					this.getDebugInfo()
+				);
+			}
+		} else {
+			// For different pathnames, use traditional route matching
+			if (!matchesRoute) {
+				return false;
+			}
+		}
+
+		// Validate selectors for the matched rule
 		for (const selector of this.containers) {
 			const result = this.validateFragmentSelectorForMatch(selector);
 			if (result instanceof Error) {

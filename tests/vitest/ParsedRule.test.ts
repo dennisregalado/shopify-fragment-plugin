@@ -131,4 +131,223 @@ describe('ParsedRule', () => {
 		expect(rule.matches({ from: '/foo/', to: '/bar/' }, visit)).toBe(false);
 		expect(console.error).toBeCalledWith(new Error('skipping rule since #fragment-1 is outside of swup\'s default containers'), expect.any(Object)) // prettier-ignore
 	});
+
+	describe('Search Parameter Matching', () => {
+		it('should match when search parameters change on same URL', () => {
+			stubGlobalDocument(
+				/*html*/ `<div id="swup" class="transition-main"><div id="fragment-1"></div></div>`
+			);
+
+			const rule = new ParsedRule({
+				from: '/products/(.*)',
+				to: '/products/(.*)',
+				containers: ['#fragment-1'],
+				watchSearchParams: true,
+				swup: new Swup()
+			});
+
+			const visit = stubVisit({ to: '' });
+
+			// Should match when search params change on same URL
+			expect(
+				rule.matches(
+					{
+						from: '/products/shirt',
+						to: '/products/shirt?variant=123'
+					},
+					visit
+				)
+			).toBe(true);
+
+			expect(
+				rule.matches(
+					{
+						from: '/products/shirt?variant=123',
+						to: '/products/shirt?variant=456'
+					},
+					visit
+				)
+			).toBe(true);
+
+			// Should not match when URLs are completely different
+			expect(
+				rule.matches(
+					{
+						from: '/products/shirt',
+						to: '/collections/all'
+					},
+					visit
+				)
+			).toBe(false);
+		});
+
+		it('should match specific search parameters only', () => {
+			stubGlobalDocument(
+				/*html*/ `<div id="swup" class="transition-main"><div id="fragment-1"></div></div>`
+			);
+
+			const rule = new ParsedRule({
+				from: '/collections/(.*)',
+				to: '/collections/(.*)',
+				containers: ['#fragment-1'],
+				watchSearchParams: ['filter.p.product_type', 'filter.v.option.color'],
+				swup: new Swup()
+			});
+
+			const visit = stubVisit({ to: '' });
+
+			// Should match when watched params change
+			expect(
+				rule.matches(
+					{
+						from: '/collections/all',
+						to: '/collections/all?filter.p.product_type=shoes'
+					},
+					visit
+				)
+			).toBe(true);
+
+			expect(
+				rule.matches(
+					{
+						from: '/collections/all?filter.p.product_type=shoes',
+						to: '/collections/all?filter.v.option.color=red'
+					},
+					visit
+				)
+			).toBe(true);
+
+			// Should not match when non-watched params change
+			expect(
+				rule.matches(
+					{
+						from: '/collections/all',
+						to: '/collections/all?sort_by=price'
+					},
+					visit
+				)
+			).toBe(false);
+		});
+
+		it('should not match search param changes when watchSearchParams is not set', () => {
+			stubGlobalDocument(
+				/*html*/ `<div id="swup" class="transition-main"><div id="fragment-1"></div></div>`
+			);
+
+			const rule = new ParsedRule({
+				from: '/products/(.*)',
+				to: '/products/(.*)',
+				containers: ['#fragment-1'],
+				swup: new Swup()
+			});
+
+			const visit = stubVisit({ to: '' });
+
+			// Should not match search param changes when watchSearchParams is not enabled
+			expect(
+				rule.matches(
+					{
+						from: '/products/shirt',
+						to: '/products/shirt?variant=123'
+					},
+					visit
+				)
+			).toBe(false);
+		});
+
+		it('should combine traditional matching with search param matching', () => {
+			stubGlobalDocument(
+				/*html*/ `<div id="swup" class="transition-main"><div id="fragment-1"></div></div>`
+			);
+
+			const rule = new ParsedRule({
+				from: '/products/(.*)',
+				to: '/products/(.*)',
+				containers: ['#fragment-1'],
+				watchSearchParams: ['variant'],
+				swup: new Swup()
+			});
+
+			const visit = stubVisit({ to: '' });
+
+			// Should match traditional route changes
+			expect(
+				rule.matches(
+					{
+						from: '/products/shirt',
+						to: '/products/pants'
+					},
+					visit
+				)
+			).toBe(true);
+
+			// Should also match search param changes
+			expect(
+				rule.matches(
+					{
+						from: '/products/shirt',
+						to: '/products/shirt?variant=123'
+					},
+					visit
+				)
+			).toBe(true);
+		});
+
+		it('should handle Shopify filter parameters correctly', () => {
+			stubGlobalDocument(
+				/*html*/ `<div id="swup" class="transition-main"><div id="fragment-1"></div></div>`
+			);
+
+			const rule = new ParsedRule({
+				from: '/collections/(.*)',
+				to: '/collections/(.*)',
+				containers: ['#fragment-1'],
+				watchSearchParams: true, // Watch all Shopify filter params
+				swup: new Swup()
+			});
+
+			const visit = stubVisit({ to: '' });
+
+			// Test various Shopify filter parameter combinations
+			expect(
+				rule.matches(
+					{
+						from: '/collections/all',
+						to: '/collections/all?filter.p.product_type=shoes'
+					},
+					visit
+				)
+			).toBe(true);
+
+			expect(
+				rule.matches(
+					{
+						from: '/collections/all?filter.p.product_type=shoes',
+						to: '/collections/all?filter.p.product_type=shoes&filter.v.option.color=red'
+					},
+					visit
+				)
+			).toBe(true);
+
+			expect(
+				rule.matches(
+					{
+						from: '/collections/all?filter.v.option.color=red',
+						to: '/collections/all?filter.v.option.color=blue'
+					},
+					visit
+				)
+			).toBe(true);
+
+			expect(
+				rule.matches(
+					{
+						from: '/collections/all?filter.v.price.gte=10&filter.v.price.lte=50',
+						to: '/collections/all?filter.v.price.gte=20&filter.v.price.lte=100'
+					},
+					visit
+				)
+			).toBe(true);
+		});
+	});
 });

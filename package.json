@@ -1,8 +1,8 @@
 {
-  "name": "@swup/fragment-plugin",
-  "amdName": "SwupFragmentPlugin",
-  "version": "1.1.2",
-  "description": "A swup plugin for dynamically replacing containers based on rules",
+  "name": "@shopify-fragment-plugin",
+  "amdName": "ShopifyFragmentPlugin",
+  "version": "1.0.0",
+  "description": "A swup plugin for dynamically replacing containers with Shopify search parameter support for variants and filtering",
   "type": "module",
   "source": "src/index.ts",
   "main": "./dist/index.cjs",
@@ -17,11 +17,14 @@
     }
   },
   "author": {
-    "name": "Rasso Hilber",
-    "email": "mail@rassohilber.com",
-    "url": "https://rassohilber.com"
+    "name": "Dennis Regalado"
   },
   "contributors": [
+    {
+      "name": "Rasso Hilber",
+      "email": "mail@rassohilber.com",
+      "url": "https://rassohilber.com"
+    },
     {
       "name": "Philipp Daun",
       "email": "daun@daun.ltd",
@@ -49,7 +52,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/swup/fragment-plugin.git"
+    "url": "https://github.com/dennisregalado/swup-shopify-fragment-plugin.git"
   },
   "dependencies": {
     "@swup/plugin": "^4.0.0"
